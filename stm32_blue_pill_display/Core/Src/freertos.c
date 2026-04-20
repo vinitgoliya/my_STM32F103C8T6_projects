@@ -22,11 +22,12 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
-#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdio.h"
+#include "i2c.h"
+#include "ssd1306.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -129,7 +130,10 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	ssd1306_SetCursor(10,10);
+	ssd1306_WriteString("Hello Vinit!", Font_7x10, White);
+	ssd1306_UpdateScreen(&hi2c1);
+    osDelay(1000);
   }
   /* USER CODE END StartDefaultTask */
 }

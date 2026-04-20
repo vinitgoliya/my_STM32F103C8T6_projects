@@ -19,12 +19,16 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "i2c.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include "i2c.h"
+#include "ssd1306.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -90,8 +94,14 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
+  MX_I2C1_Init();
+  HAL_Delay(100);
   /* USER CODE BEGIN 2 */
-
+  ssd1306_Init(&hi2c1);
+  ssd1306_Fill(Black);
+//  ssd1306_SetCursor(10,10);
+//  ssd1306_WriteString("Hello Vinit!", Font_7x10, White);
+//  ssd1306_UpdateScreen(&hi2c1);
   /* USER CODE END 2 */
 
   /* Init scheduler */
