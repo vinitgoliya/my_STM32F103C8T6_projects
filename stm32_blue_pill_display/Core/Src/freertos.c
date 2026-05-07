@@ -131,7 +131,7 @@ void StartDefaultTask(void *argument)
   for(;;)
   {
 	ssd1306_SetCursor(10,10);
-	ssd1306_WriteString("Hello Vinit!", Font_7x10, White);
+	ssd1306_WriteString("Hello Reenu!", Font_7x10, White);
 	ssd1306_UpdateScreen(&hi2c1);
     osDelay(1000);
   }

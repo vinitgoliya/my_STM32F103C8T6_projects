@@ -20,6 +20,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "i2c.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -95,7 +96,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_I2C1_Init();
-  HAL_Delay(100);
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   ssd1306_Init(&hi2c1);
   ssd1306_Fill(Black);

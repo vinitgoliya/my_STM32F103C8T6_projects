@@ -1,0 +1,5 @@
+
+
+PB6 = SCL
+PB7 = SDA
+
