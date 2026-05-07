@@ -119,10 +119,8 @@ int main(void) {
 		uint16_t received_crc;
 		uint16_t calculated_crc;
 
-		/*
-		 * Clear RX Buffer
-		 */
-		memset(rxData, 0, sizeof(rxData));
+
+		uint8_t rxData[9] = {0};
 
 		/*
 		 * Send Modbus Request
