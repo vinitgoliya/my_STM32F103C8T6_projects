@@ -96,12 +96,12 @@ int main(void) {
 	 * Quantity      = 0002
 	 */
 
-	txData[0] = 0x01;
-	txData[1] = 0x03;
-	txData[2] = 0x00;
-	txData[3] = 0x00;
-	txData[4] = 0x00;
-	txData[5] = 0x02;
+	txData[0] = 0x01; // Slave address
+	txData[1] = 0x03; // Function code
+	txData[2] = 0x00; // Start Address High Byte (where to start reading)
+	txData[3] = 0x00; // Start Address Low Byte
+	txData[4] = 0x00; // Quantity High Byte
+	txData[5] = 0x02; // Quantity low Byte
 //	txData[5] = 0x02;
 
 
@@ -146,26 +146,26 @@ int main(void) {
 
 		if(received_crc == calculated_crc)
 		{
-			 uint32_t raw_data;
-		    raw_data = ((uint32_t)rxData[3] << 24) |
-		               ((uint32_t)rxData[4] << 16) |
-		               ((uint32_t)rxData[5] << 8)  |
-		               ((uint32_t)rxData[6]);
-
-		    memcpy(&value, &raw_data, sizeof(value));
-
-		    printf("Raw HEX     = 0x%08lX\r\n", raw_data);
-
-		    printf("Float Value = %.4f\r\n", value);
-//		    reg1 = (rxData[3] << 8) | rxData[4];
+//			 uint32_t raw_data;
+//		    raw_data = ((uint32_t)rxData[3] << 24) |
+//		               ((uint32_t)rxData[4] << 16) |
+//		               ((uint32_t)rxData[5] << 8)  |
+//		               ((uint32_t)rxData[6]);
 //
-//		    reg2 = (rxData[5] << 8) | rxData[6];
+//		    memcpy(&value, &raw_data, sizeof(value));
 //
-//		    combined = ((uint32_t)reg1 << 16) | reg2;
-//
-//		    memcpy(&value, &combined, sizeof(value));
+//		    printf("Raw HEX     = 0x%08lX\r\n", raw_data);
 //
 //		    printf("Float Value = %.4f\r\n", value);
+		    reg1 = (rxData[3] << 8) | rxData[4];
+
+		    reg2 = (rxData[5] << 8) | rxData[6];
+
+		    combined = ((uint32_t)reg1 << 16) | reg2;
+
+		    value = *(float*)&combined;
+
+		    printf("Float Value = %.4f\r\n", value);
 		}
 		else
 		{
