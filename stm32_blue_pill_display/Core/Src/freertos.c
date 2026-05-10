@@ -28,6 +28,7 @@
 #include "stdio.h"
 #include "i2c.h"
 #include "ssd1306.h"
+#include "ds18b20.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,14 +54,14 @@
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for LED_Tsk */
 osThreadId_t LED_TskHandle;
 const osThreadAttr_t LED_Tsk_attributes = {
   .name = "LED_Tsk",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 
@@ -130,10 +131,16 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+	char msg[20];
 	ssd1306_SetCursor(10,10);
-	ssd1306_WriteString("Hello Reenu!", Font_7x10, White);
+	ssd1306_WriteString("Hello VINIT !", Font_7x10, White);
 	ssd1306_UpdateScreen(&hi2c1);
-    osDelay(1000);
+	float temp = DS18B20_ReadTemp();
+	sprintf(msg, "Temp: %.2f C", temp);
+	ssd1306_SetCursor(10, 20);
+	ssd1306_WriteString(msg, Font_7x10, White);
+	ssd1306_UpdateScreen(&hi2c1);
+    osDelay(100);
   }
   /* USER CODE END StartDefaultTask */
 }

@@ -100,6 +100,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   ssd1306_Init(&hi2c1);
   ssd1306_Fill(Black);
+  HAL_TIM_Base_Start(&htim2);
 //  ssd1306_SetCursor(10,10);
 //  ssd1306_WriteString("Hello Vinit!", Font_7x10, White);
 //  ssd1306_UpdateScreen(&hi2c1);

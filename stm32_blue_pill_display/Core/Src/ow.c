@@ -99,10 +99,20 @@ void ow_init(ow_t *handle, const ow_init_t *init)
 #endif
 
   /* Register user timer callback for timing events */
-  HAL_TIM_RegisterCallback(handle->config.tim_handle, HAL_TIM_PERIOD_ELAPSED_CB_ID, init->tim_cb);
+//  HAL_TIM_RegisterCallback(handle->config.tim_handle, HAL_TIM_PERIOD_ELAPSED_CB_ID, init->tim_cb);
 
   /* Set bus to idle state (high) */
   ow_write_bit(handle, true);
+}
+
+
+extern TIM_HandleTypeDef htim2;
+
+void delay_us(uint16_t us)
+{
+    __HAL_TIM_SET_COUNTER(&htim2, 0);
+
+    while(__HAL_TIM_GET_COUNTER(&htim2) < us);
 }
 
 /*************************************************************************************************/
