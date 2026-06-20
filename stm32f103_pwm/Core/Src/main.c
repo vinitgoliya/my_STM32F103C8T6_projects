@@ -1,20 +1,10 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -36,27 +26,27 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define PWM_SAMPLES    64
+#define PWM_PERIOD     7199
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#define SINE_SAMPLES 64
-#define PWM_PERIOD   14399
 
-uint16_t sineTable[SINE_SAMPLES];
-
-volatile uint8_t sineIndex = 0;
-
-volatile float outputFrequency = 50.0f;
-volatile float modulationIndex = 1.0f;
+uint32_t pwmBuffer[PWM_SAMPLES];
 
 uint8_t rxByte;
 char rxBuffer[20];
 uint8_t rxIndex = 0;
+
+volatile uint16_t modulationIndex = 100;
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim1;
+DMA_HandleTypeDef hdma_tim1_up;
 
 UART_HandleTypeDef huart1;
 
@@ -81,6 +71,7 @@ const osThreadAttr_t controle_task_attributes = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
@@ -93,17 +84,20 @@ void StartTask02(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void Generate_Sine_Table(void)
-{
-    for(int i = 0; i < SINE_SAMPLES; i++)
-    {
-        float angle = (2.0f * 3.14159265f * i) / SINE_SAMPLES;
+void Generate_PWM_Buffer(uint16_t amplitude) {
+	for (int i = 0; i < PWM_SAMPLES; i++) {
+		float angle;
 
-        float sineValue = (sinf(angle) + 1.0f) / 2.0f;
+		angle = (2.0f * 3.14159265f * i) / PWM_SAMPLES;
 
-        sineTable[i] = (uint16_t)(sineValue * PWM_PERIOD);
-    }
+		float sineValue;
+
+		sineValue = (sinf(angle) + 1.0f) / 2.0f;
+
+		pwmBuffer[i] = (uint16_t) (sineValue * amplitude);
+	}
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -135,13 +129,55 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_TIM1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  /* UART RX */
   HAL_UART_Receive_IT(&huart1, &rxByte, 1);
-  Generate_Sine_Table();
+
+  /* Create sine lookup table */
+  Generate_PWM_Buffer(PWM_PERIOD);
+
+  /* Start PWM output */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_Base_Start_IT(&htim1);
+
+  /* Enable TIM1 main output */
+  __HAL_TIM_MOE_ENABLE(&htim1);
+
+  /* Enable TIM1 Update DMA request */
+  __HAL_TIM_ENABLE_DMA(&htim1, TIM_DMA_UPDATE);
+
+  /* Start DMA:
+     Source      = pwmBuffer[]
+     Destination = TIM1->CCR1
+     Length      = PWM_SAMPLES
+  */
+  HAL_DMA_Start(
+          &hdma_tim1_up,
+          (uint32_t)pwmBuffer,
+          (uint32_t)&TIM1->CCR1,
+          PWM_SAMPLES);
+
+  /* Enable DMA channel */
+  __HAL_DMA_ENABLE(&hdma_tim1_up);
+
+  /* Start timer counter */
+  __HAL_TIM_ENABLE(&htim1);
+
+  volatile uint16_t test_ccr;
+  volatile uint16_t test_cnt;
+  volatile uint16_t test_cndtr;
+
+  while (1)
+  {
+      test_ccr   = TIM1->CCR1;
+      test_cnt   = TIM1->CNT;
+      test_cndtr = DMA1_Channel5->CNDTR;
+
+      HAL_Delay(100);
+  }
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -245,6 +281,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 0 */
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
@@ -254,11 +291,20 @@ static void MX_TIM1_Init(void)
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 14399;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
+  htim1.Init.Period = 7199;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
@@ -270,7 +316,7 @@ static void MX_TIM1_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 7200;
+  sConfigOC.Pulse = 3600;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -332,6 +378,22 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -352,93 +414,78 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    if(htim->Instance == TIM1)
-    {
-        uint16_t pwmValue;
 
-        pwmValue = sineTable[sineIndex] * modulationIndex;
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	if (huart->Instance == USART1) {
+		if (rxByte != '\n' && rxIndex < sizeof(rxBuffer) - 1) {
+			rxBuffer[rxIndex++] = rxByte;
+		} else {
+			rxBuffer[rxIndex] = '\0';
 
-        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, pwmValue);
+			if (rxBuffer[0] == 'F') {
+				int percent;
 
-        sineIndex++;
+				percent = atoi(&rxBuffer[1]);
 
-        if(sineIndex >= SINE_SAMPLES)
-        {
-            sineIndex = 0;
-        }
-    }
+				if (percent >= 10 && percent <= 100) {
+					modulationIndex = percent;
+
+					Generate_PWM_Buffer((PWM_PERIOD * modulationIndex) / 100);
+				}
+			}
+
+			rxIndex = 0;
+
+			memset(rxBuffer, 0, sizeof(rxBuffer));
+		}
+
+		HAL_UART_Receive_IT(&huart1, &rxByte, 1);
+	}
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if(huart->Instance == USART1)
-    {
-        if(rxByte != '\n' && rxIndex < sizeof(rxBuffer)-1)
-        {
-            rxBuffer[rxIndex++] = rxByte;
-        }
-        else
-        {
-            rxBuffer[rxIndex] = '\0';
-
-            if(rxBuffer[0] == 'F')
-            {
-                float freq = atof(&rxBuffer[1]);
-
-                if(freq >= 15 && freq <= 70)
-                {
-                    outputFrequency = freq;
-
-                    modulationIndex = outputFrequency / 70.0f;
-                }
-            }
-
-            rxIndex = 0;
-
-            memset(rxBuffer,0,sizeof(rxBuffer));
-        }
-
-        HAL_UART_Receive_IT(&huart1, &rxByte, 1);
-    }
-}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END 5 */
+
+void StartDefaultTask(void *argument) {
+	for (;;) {
+		osDelay(1);
+	}
 }
 
+/* USER CODE END Header_StartDefaultTask */
+
+
 /* USER CODE BEGIN Header_StartTask02 */
-/**
-* @brief Function implementing the controle_task thread.
-* @param argument: Not used
-* @retval None
-*/
+
+void StartTask02(void *argument) {
+	for (;;) {
+		osDelay(1);
+	}
+}
+
 /* USER CODE END Header_StartTask02 */
-void StartTask02(void *argument)
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM2 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  /* USER CODE BEGIN StartTask02 */
-  /* Infinite loop */
-  for(;;)
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM2)
   {
-    osDelay(1);
+    HAL_IncTick();
   }
-  /* USER CODE END StartTask02 */
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
 }
 
 /**
