@@ -166,18 +166,18 @@ int main(void)
   /* Start timer counter */
   __HAL_TIM_ENABLE(&htim1);
 
-  volatile uint16_t test_ccr;
-  volatile uint16_t test_cnt;
-  volatile uint16_t test_cndtr;
-
-  while (1)
-  {
-      test_ccr   = TIM1->CCR1;
-      test_cnt   = TIM1->CNT;
-      test_cndtr = DMA1_Channel5->CNDTR;
-
-      HAL_Delay(100);
-  }
+//  volatile uint16_t test_ccr;
+//  volatile uint16_t test_cnt;
+//  volatile uint16_t test_cndtr;
+//
+//  while (1)
+//  {
+//      test_ccr   = TIM1->CCR1;
+//      test_cnt   = TIM1->CNT;
+//      test_cndtr = DMA1_Channel5->CNDTR;
+//
+//      HAL_Delay(100);
+//  }
   /* USER CODE END 2 */
 
   /* Init scheduler */
